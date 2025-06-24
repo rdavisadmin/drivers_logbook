@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "121893029189",
+    "project_id": "logbook-346d3",
+    "storage_bucket": "logbook-346d3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:121893029189:android:2e4f50fc4bfb89806bea2c",
+        "android_client_info": {
+          "package_name": "cc.rdavis.drivers_logbook"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASCl_ni3nlfYGhJ7s2ds_ZtBzN0lRZHVQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:121893029189:android:58f84761f059b8e46bea2c",
+        "android_client_info": {
+          "package_name": "cc.rdavis.driverslogbook"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASCl_ni3nlfYGhJ7s2ds_ZtBzN0lRZHVQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:121893029189:android:f8283430df335f696bea2c",
+        "android_client_info": {
+          "package_name": "cc.rdavis.logbook"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASCl_ni3nlfYGhJ7s2ds_ZtBzN0lRZHVQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
