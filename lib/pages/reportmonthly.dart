@@ -6,7 +6,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 
@@ -20,6 +19,10 @@ class ReportMonthly extends StatefulWidget {
 class _ReportMonthlyState extends State<ReportMonthly> {
   String? selectedMonth;
   int? selectedYear;
+  bool _isGenerating = false;
+
+  String? _dcNumber;
+  String? _probationOfficer;
 
   final List<String> months = List.generate(12, (index) {
     final date = DateTime(0, index + 1);
@@ -27,7 +30,34 @@ class _ReportMonthlyState extends State<ReportMonthly> {
   });
 
   final List<int> years =
-  List.generate(11, (i) => DateTime.now().year - 5 + i); // +/- 5 years
+  List.generate(11, (i) => DateTime.now().year - 5 + i);
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          setState(() {
+            _dcNumber = userDoc['dcNumber'] as String?;
+            _probationOfficer = userDoc['probationOfficer'] as String?;
+          });
+        }
+      } catch (e) {
+        print("Error fetching user data: $e");
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,11 +106,22 @@ class _ReportMonthlyState extends State<ReportMonthly> {
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: (selectedMonth == null || selectedYear == null)
+              onPressed: (selectedMonth == null ||
+                  selectedYear == null ||
+                  _isGenerating ||
+                  _dcNumber == null ||
+                  _probationOfficer == null)
                   ? null
                   : _generatePdfReport,
-              child: const Text('Generate PDF'),
+              child: _isGenerating
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text('Generate and Open PDF'),
             ),
+            if (_dcNumber != null || _probationOfficer != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: Text('DC#: ${_dcNumber ?? 'N/A'}, Probation Officer: ${_probationOfficer ?? 'N/A'}'),
+              ),
           ],
         ),
       ),
@@ -88,16 +129,19 @@ class _ReportMonthlyState extends State<ReportMonthly> {
   }
 
   Future<void> _generatePdfReport() async {
+    setState(() => _isGenerating = true);
+
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null || selectedMonth == null || selectedYear == null) {
+    if (user == null || selectedMonth == null || selectedYear == null || _dcNumber == null || _probationOfficer == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select a month and year.")),
+        const SnackBar(content: Text("Please select a month and year, and ensure user data is loaded.")),
       );
+      setState(() => _isGenerating = false);
       return;
     }
 
-    // ✅ Use default font for safety
     final ttf = pw.Font.helvetica();
+    final driversName = user.displayName ?? 'N/A';
 
     final selectedMonthIndex = months.indexOf(selectedMonth!) + 1;
     final start = DateTime(selectedYear!, selectedMonthIndex, 1);
@@ -116,8 +160,9 @@ class _ReportMonthlyState extends State<ReportMonthly> {
 
     if (trips.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No trips found for selected month")),
+        const SnackBar(content: Text("No trips found for the selected month.")),
       );
+      setState(() => _isGenerating = false);
       return;
     }
 
@@ -138,23 +183,16 @@ class _ReportMonthlyState extends State<ReportMonthly> {
 
     List<List<String>> dataRows = trips.map((doc) {
       final Map<String, dynamic> data = doc.data();
-
-      String formatTime(dynamic ts) {
-        if (ts is Timestamp) return timeFormatter.format(ts.toDate());
-        return 'N/A';
-      }
-
-      String formatDate(dynamic ts) {
-        if (ts is Timestamp) return dateFormatter.format(ts.toDate());
-        return 'N/A';
-      }
-
+      String formatTime(dynamic ts) =>
+          ts is Timestamp ? timeFormatter.format(ts.toDate()) : 'N/A';
+      String formatDate(dynamic ts) =>
+          ts is Timestamp ? dateFormatter.format(ts.toDate()) : 'N/A';
       return [
         formatDate(data['tripDate']),
         data['departedFrom']?.toString() ?? 'N/A',
         formatTime(data['tripStartTime']),
         data['startOdometer']?.toString() ?? 'N/A',
-        data['passenger']?.toString() ?? 'N/A',
+        data['passenger']?.toString() ?? ' ',
         data['destination']?.toString() ?? 'N/A',
         formatTime(data['tripEndTime']),
         data['endOdometer']?.toString() ?? 'N/A',
@@ -169,102 +207,129 @@ class _ReportMonthlyState extends State<ReportMonthly> {
       );
 
       pdf.addPage(
-        pw.Page(
+        pw.MultiPage(
           pageFormat: PdfPageFormat.letter.landscape,
           margin: const pw.EdgeInsets.all(20),
-          build: (pw.Context context) {
-            return pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text(
-                  'Trip Report for $selectedMonth $selectedYear - Page ${(i ~/ rowsPerPage) + 1}',
-                  style: pw.TextStyle(font: ttf, fontSize: 8),
-                ),
-                pw.SizedBox(height: 10),
-                pw.Table(
-                  border: pw.TableBorder.all(width: 0.5),
-                  columnWidths: {
-                    0: const pw.FixedColumnWidth(60),
-                    1: const pw.FlexColumnWidth(2),
-                    2: const pw.FixedColumnWidth(70),
-                    3: const pw.FixedColumnWidth(70),
-                    4: const pw.FlexColumnWidth(2),
-                    5: const pw.FlexColumnWidth(2),
-                    6: const pw.FixedColumnWidth(70),
-                    7: const pw.FixedColumnWidth(70),
-                  },
-                  children: [
-                    pw.TableRow(
-                      decoration:
-                      const pw.BoxDecoration(color: PdfColors.grey300),
-                      children: headers.map((header) {
-                        return pw.Container(
-                          alignment: pw.Alignment.center,
-                          padding: const pw.EdgeInsets.all(4),
-                          child: pw.Text(
-                            header,
-                            style: pw.TextStyle(
-                              font: ttf,
-                              fontSize: 8,
-                              fontWeight: pw.FontWeight.bold,
-                            ),
-                            textAlign: pw.TextAlign.center,
-                          ),
-                        );
-                      }).toList(),
+          header: (pw.Context context) {
+            // Only show header on odd-numbered pages
+            if (context.pageNumber % 2 != 0) {
+              return pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Center(
+                    child: pw.Text(
+                      'STATE OF FLORIDA',
+                      style: pw.TextStyle(font: ttf, fontSize: 12, fontWeight: pw.FontWeight.bold),
                     ),
-                    ...pageRows.map((row) => pw.TableRow(
-                      children: row.map((cell) {
-                        return pw.Container(
-                          alignment: pw.Alignment.center,
-                          padding: const pw.EdgeInsets.all(4),
-                          child: pw.Text(
-                            cell,
-                            style: pw.TextStyle(font: ttf, fontSize: 8),
-                            textAlign: pw.TextAlign.center,
-                          ),
-                        );
-                      }).toList(),
-                    )),
-                  ],
-                )
-              ],
+                  ),
+                  pw.Center(
+                    child: pw.Text(
+                      'SEX OFFENDER PROBATION DRIVING LOG',
+                      style: pw.TextStyle(font: ttf, fontSize: 12, fontWeight: pw.FontWeight.bold),
+                    ),
+                  ),
+                  pw.SizedBox(height: 10),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        'Name: $driversName',
+                        style: pw.TextStyle(font: ttf, fontSize: 12),
+                      ),
+                      pw.Text(
+                        'DC#: ${_dcNumber ?? 'N/A'}',
+                        style: pw.TextStyle(font: ttf, fontSize: 12),
+                      ),
+                      pw.Text(
+                        'Probation Officer: ${_probationOfficer ?? 'N/A'}',
+                        style: pw.TextStyle(font: ttf, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                  pw.Divider(),
+                  pw.SizedBox(height: 1),
+                ],
+              );
+            }
+            // Return an empty Container for even pages so nothing is rendered
+            return pw.Container();
+          },
+          footer: (pw.Context context) {
+            return pw.Container(
+              alignment: pw.Alignment.center,
+              margin: const pw.EdgeInsets.only(top: 1.0 * PdfPageFormat.cm),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'DC3-244 (Revised 6-02)',
+                    style: pw.TextStyle(font: ttf, fontSize: 8, color: PdfColors.black),
+                  ),
+                  pw.Text(
+                    'Page ${context.pageNumber} of ${context.pagesCount}',
+                    style: pw.TextStyle(font: ttf, fontSize: 8, color: PdfColors.black),
+                  ),
+                  pw.Text(
+                    driversName,
+                    style: pw.TextStyle(font: ttf, fontSize: 8, color: PdfColors.black),
+                  ),
+                ],
+              ),
             );
           },
+          build: (pw.Context context) => [
+            pw.SizedBox(height: 6),
+            pw.Table.fromTextArray(
+              headers: headers,
+              data: pageRows,
+              border: pw.TableBorder.all(width: 0.5),
+              headerStyle: pw.TextStyle(
+                font: ttf,
+                fontSize: 8,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.black,
+              ),
+              headerDecoration: const pw.BoxDecoration(color: PdfColors.grey400),
+              cellStyle: pw.TextStyle(font: ttf, fontSize: 8),
+              cellPadding: const pw.EdgeInsets.symmetric(vertical: 2.0, horizontal: 2.0),
+              cellAlignment: pw.Alignment.center,
+              columnWidths: {
+                0: const pw.FixedColumnWidth(55),
+                1: const pw.FixedColumnWidth(140),
+                2: const pw.FixedColumnWidth(50),
+                3: const pw.FixedColumnWidth(60),
+                4: const pw.FixedColumnWidth(140),
+                6: const pw.FixedColumnWidth(50),
+                7: const pw.FixedColumnWidth(55),
+              },
+            )
+          ],
         ),
       );
     }
 
-    // ✅ Permission and path setup
-    if (!kIsWeb && Platform.isAndroid) {
-      final status = await Permission.storage.request();
-      if (!status.isGranted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Storage permission denied")),
-        );
-        return;
-      }
-    }
-
-    Directory? downloadsDir;
-    if (Platform.isAndroid) {
-      downloadsDir = await getExternalStorageDirectory(); // safer than /Download
-    } else if (Platform.isIOS) {
-      downloadsDir = await getApplicationDocumentsDirectory();
-    } else {
-      downloadsDir = await getDownloadsDirectory();
-    }
+    final Directory directory = await getApplicationDocumentsDirectory();
+    final String path = directory.path;
 
     final safeMonth = selectedMonth!.replaceAll(' ', '_');
     final filename = 'Trip_Report_${safeMonth}_$selectedYear.pdf';
-    final filePath = '${downloadsDir!.path}/$filename';
+    final filePath = '$path/$filename';
     final file = File(filePath);
+
     await file.writeAsBytes(await pdf.save());
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("PDF saved as $filename")),
+      SnackBar(content: Text("PDF saved to: $filename")),
     );
 
-    await OpenFile.open(file.path);
+    final result = await OpenFile.open(file.path);
+
+    if (result.type != ResultType.done) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error opening file: ${result.message}")),
+      );
+    }
+
+    setState(() => _isGenerating = false);
   }
 }
