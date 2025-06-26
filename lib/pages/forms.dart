@@ -41,17 +41,16 @@ class ViewFormsScreenState extends State<ViewFormsScreen> {
   }
 
   Future<void> _openPdf(String url) async {
+    final messenger = ScaffoldMessenger.of(context);
     final uri = Uri.parse(url);
     if (!await launchUrl(uri)) {
       // Handle the error gracefully
       _logger.e('Could not launch $url');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not open the Forms. Please try again later.'),
-          ),
-        );
-      }
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Could not open the Forms. Please try again later.'),
+        ),
+      );
     }
   }
 
@@ -60,49 +59,72 @@ class ViewFormsScreenState extends State<ViewFormsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('View Forms You Can Download'),
+        backgroundColor: const Color.fromARGB(255, 123, 194, 252),
       ),
-      body: FutureBuilder<List<Reference>>(
-        future: _pdfFiles,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return const Center(child: Text('Error loading forms.'));
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No Files found in the "Forms" folder.'));
-          }
+      body: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/road_lines.png'), // Apply background
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: FutureBuilder<List<Reference>>(
+          future: _pdfFiles,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return const Center(child: Text('Error loading forms.'));
+            }
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return const Center(child: Text('No Files found in the "Forms" folder.'));
+            }
 
-          final files = snapshot.data!;
-          return ListView.builder(
-            itemCount: files.length,
-            itemBuilder: (context, index) {
-              final file = files[index];
-              return ListTile(
-                title: Text(file.name),
-                leading: const Icon(Icons.picture_as_pdf),
-                onTap: () async {
-                  if (!mounted) return;
-                  try {
-                    final String downloadUrl = await file.getDownloadURL();
-                    if (!mounted) return;
-                    await _openPdf(downloadUrl);
-                  } catch (e) {
-                    _logger.e('Error getting download URL: $e');
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Error opening report: ${file.name}'),
-                        ),
+            final files = snapshot.data!;
+            // Use ListView.separated to automatically add dividers
+            return ListView.separated(
+              itemCount: files.length,
+              separatorBuilder: (context, index) => const Divider(color: Colors.white70), // Define the divider
+              itemBuilder: (context, index) {
+                final file = files[index];
+                return Container(
+                  color: Colors.black.withAlpha(204),
+                  // Add a semi-transparent background to list items for readability
+                  child: ListTile(
+                    title: Text(
+                      file.name.replaceAll('.pdf', ''), // Clean up the name for display
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                    leading: const Icon(Icons.picture_as_pdf, color: Colors.white),
+                    onTap: () async {
+                      // **FIX:** Capture context-dependent members before the async gap.
+                      final messenger = ScaffoldMessenger.of(context);
+
+                      messenger.showSnackBar(
+                        const SnackBar(content: Text('Preparing to open form...')),
                       );
-                    }
-                  }
-                },
-              );
-            },
-          );
-        },
+                      try {
+                        final String downloadUrl = await file.getDownloadURL();
+                        // The 'mounted' check is still good practice before the final async call.
+                        if (!mounted) return;
+                        await _openPdf(downloadUrl);
+                      } catch (e) {
+                        _logger.e('Error getting download URL: $e');
+                        // Use the captured messenger instance.
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text('Error opening report: ${file.name}'),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }

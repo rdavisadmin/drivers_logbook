@@ -2,15 +2,17 @@
 
 Drivers Logbook
 
-## Getting Started
+## Introduction
 
-This project is a starting point for a Flutter application.
+This project is a FDOC Sex Offender Driving Log App
+It is designed to automate the monthly Driving Log for probationers
+to help them stay compliant with their probationary obligations.
+It is an ongoing project that will be updated as the project progresses.
+This is the first iteration of the project.
+So errors are to be expected, please let me know of any issues you may encounter.
+If there is a question, please don't hesitate to reach out.
+Also if you find any bugs, please let me know.
+Most importantly, if you find any improvements, please let me know.
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Ron Davis
+mail@rdavis.cc

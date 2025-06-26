@@ -65,7 +65,7 @@ class _GenerateReportScreenState extends State<GenerateReportScreen> {
                   label: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                     decoration: BoxDecoration(
-                      color: Colors.grey[200], // Lite gray background for the label
+                      color: Colors.grey[300], // Lite gray background for the label
                       borderRadius: BorderRadius.circular(4.0),
                     ),
                     child: const Text('Enter Year'),
@@ -84,13 +84,13 @@ class _GenerateReportScreenState extends State<GenerateReportScreen> {
                   label: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                     decoration: BoxDecoration(
-                      color: Colors.grey[200], // Lite gray background for the label
+                      color: Colors.grey[300], // Lite gray background for the label
                       borderRadius: BorderRadius.circular(4.0),
                     ),
                     child: const Text('Select Month'),
                   ),
                   filled: true,
-                  fillColor: Colors.grey[200], // Field background
+                  fillColor: Colors.grey[300], // Field background
                   border: OutlineInputBorder(),
                 ),
                 value: _selectedMonth,

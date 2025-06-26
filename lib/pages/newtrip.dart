@@ -30,13 +30,61 @@ class _NewTripScreenState extends State<NewTripScreen> {
   String? _fileName;
   File? _file;
 
+  // State for vehicle dropdown
+  final List<Map<String, dynamic>> _vehicles = [];
+  String? _selectedVehicle;
+  bool _isLoadingVehicles = true;
+
   @override
   void initState() {
     super.initState();
     final User? currentUser = _auth.currentUser;
     _driverNameController =
         TextEditingController(text: currentUser?.displayName ?? '');
+    _fetchUserVehicles();
   }
+
+  /// Fetches the list of vehicles for the current user from Firestore
+  Future<void> _fetchUserVehicles() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      if (mounted) setState(() => _isLoadingVehicles = false);
+      return;
+    }
+    try {
+      final docSnapshot = await _firestore.collection('users').doc(user.uid).get();
+      if (docSnapshot.exists && docSnapshot.data() != null) {
+        final data = docSnapshot.data() as Map<String, dynamic>;
+        if (mounted) {
+          final List<dynamic> vehicleData = data['vehicles'] ?? [];
+          setState(() {
+            _vehicles.clear();
+            for (var vehicle in vehicleData) {
+              if (vehicle is Map<String, dynamic>) {
+                _vehicles.add(vehicle);
+              }
+            }
+            if (_vehicles.isNotEmpty) {
+              // Create a unique string for the value and display text.
+              _selectedVehicle = '${_vehicles.first['vehicle']} - Tag: ${_vehicles.first['tag']}';
+            }
+            _isLoadingVehicles = false;
+          });
+        }
+      } else {
+        if (mounted) setState(() => _isLoadingVehicles = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching vehicles: $e')),
+        );
+        setState(() => _isLoadingVehicles = false);
+      }
+      print("Error fetching vehicles: $e");
+    }
+  }
+
 
   @override
   void dispose() {
@@ -212,6 +260,42 @@ class _NewTripScreenState extends State<NewTripScreen> {
                           FormBuilderValidators.maxLength(100),
                         ]),
                       ),
+
+                      // Vehicle Selection Dropdown
+                      const SizedBox(height: 16),
+                      if (_isLoadingVehicles)
+                        const Center(child: CircularProgressIndicator())
+                      else if (_vehicles.isEmpty)
+                        Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withAlpha(204),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text('No vehicles found. Please add a vehicle in your profile.', textAlign: TextAlign.center, style: TextStyle(color: Colors.black))
+                        )
+                      else
+                        FormBuilderDropdown<String>(
+                          name: 'vehicle',
+                          decoration: const InputDecoration(
+                            labelText: 'Vehicle',
+                            border: OutlineInputBorder(),
+                            fillColor: Colors.white,
+                            filled: true,
+                          ),
+                          initialValue: _selectedVehicle,
+                          items: _vehicles.map((vehicle) {
+                            final displayText = '${vehicle['vehicle']} - Tag: ${vehicle['tag']}';
+                            return DropdownMenuItem(
+                              value: displayText, // The value will be the combined string
+                              child: Text(displayText),
+                            );
+                          }).toList(),
+                          validator: FormBuilderValidators.compose([
+                            FormBuilderValidators.required(),
+                          ]),
+                        ),
+
 
                       // Trip Date
                       const SizedBox(height: 16, width: 25),
@@ -443,7 +527,11 @@ class _NewTripScreenState extends State<NewTripScreen> {
       setState(() {
         _fileName = null;
         _file = null;
+        // After reset, re-fetch vehicles to reset the dropdown to the initial state
+        _isLoadingVehicles = true;
       });
+      _fetchUserVehicles();
+
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
