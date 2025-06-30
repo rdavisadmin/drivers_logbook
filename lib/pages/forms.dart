@@ -3,32 +3,26 @@ import 'package:flutter/material.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:logger/logger.dart';
-
 class ViewFormsScreen extends StatefulWidget {
   const ViewFormsScreen({super.key});
-
   @override
   ViewFormsScreenState createState() => ViewFormsScreenState();
 }
-
 class ViewFormsScreenState extends State<ViewFormsScreen> {
   late Future<List<Reference>> _pdfFiles;
   final storage = FirebaseStorage.instance;
   final _logger = Logger();
-
   @override
   void initState() {
     super.initState();
     _pdfFiles = _fetchPdfFiles();
   }
-
   Future<List<Reference>> _fetchPdfFiles() async {
     // Explicitly check if the user is authenticated before making the call
     if (FirebaseAuth.instance.currentUser == null) {
       _logger.e("User is not authenticated. Cannot fetch files.");
       return [];
     }
-
     try {
       // List all items in the 'Forms' directory.
       final ListResult result = await storage.ref('forms').listAll();
@@ -39,7 +33,6 @@ class ViewFormsScreenState extends State<ViewFormsScreen> {
       return [];
     }
   }
-
   Future<void> _openPdf(String url) async {
     final messenger = ScaffoldMessenger.of(context);
     final uri = Uri.parse(url);
@@ -53,7 +46,6 @@ class ViewFormsScreenState extends State<ViewFormsScreen> {
       );
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -80,7 +72,6 @@ class ViewFormsScreenState extends State<ViewFormsScreen> {
             if (!snapshot.hasData || snapshot.data!.isEmpty) {
               return const Center(child: Text('No Files found in the "Forms" folder.'));
             }
-
             final files = snapshot.data!;
             // Use ListView.separated to automatically add dividers
             return ListView.separated(
@@ -100,7 +91,6 @@ class ViewFormsScreenState extends State<ViewFormsScreen> {
                     onTap: () async {
                       // **FIX:** Capture context-dependent members before the async gap.
                       final messenger = ScaffoldMessenger.of(context);
-
                       messenger.showSnackBar(
                         const SnackBar(content: Text('Preparing to open form...')),
                       );

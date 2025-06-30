@@ -6,30 +6,24 @@ import 'package:logger/logger.dart';
 class EditUser extends StatefulWidget {
   const EditUser({super.key, this.userData});
   final Map<String, dynamic>? userData;
-
-
   @override
   EditUserState createState() => EditUserState();
 }
-
 class EditUserState extends State<EditUser> {
   final _formKey = GlobalKey<FormState>();
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
   final _logger = Logger();
-
   late User _user;
   late TextEditingController _emailController;
   late TextEditingController _nameController;
   late TextEditingController _passwordController;
   late TextEditingController _dcNumberController;
   late TextEditingController _probationOfficerController;
-
-  // New state variable to hold the list of vehicles
   final List<Map<String, dynamic>> _vehicles = [];
-  // New state variable to track the selected vehicle from the dropdown
   String? _selectedVehicleTag;
-
+  final List<Map<String, dynamic>> _passengers = [];
+  String? _selectedPassengerName;
   @override
   void initState() {
     super.initState();
@@ -41,8 +35,6 @@ class EditUserState extends State<EditUser> {
     _probationOfficerController = TextEditingController();
     _loadUserCustomData();
   }
-
-  /// Loads all user data from Firestore, including the new list of vehicles.
   Future<void> _loadUserCustomData() async {
     try {
       final docSnapshot =
@@ -54,31 +46,41 @@ class EditUserState extends State<EditUser> {
             _dcNumberController.text = data['dcNumber'] ?? '';
             _probationOfficerController.text = data['probationOfficer'] ?? '';
 
-            // Load vehicles data from Firestore.
-            // It's stored as an array of maps.
             if (data['vehicles'] != null && data['vehicles'] is List) {
-              _vehicles.clear(); // Clear the list before populating
+              _vehicles.clear();
               for (var vehicleData in data['vehicles']) {
                 if (vehicleData is Map<String, dynamic>) {
                   _vehicles.add(vehicleData);
                 }
               }
             }
-            // Set the default selected vehicle in the dropdown if any exist
             if (_vehicles.isNotEmpty) {
               _selectedVehicleTag = _vehicles.first['tag'];
+            }
+
+            // --- (2) ADDED: Load passengers data ---
+            if (data['passengers'] != null && data['passengers'] is List) {
+              _passengers.clear();
+              for (var passengerData in data['passengers']) {
+                if (passengerData is Map<String, dynamic>) {
+                  _passengers.add(passengerData);
+                }
+              }
+            }
+            if (_passengers.isNotEmpty) {
+              _selectedPassengerName = _passengers.first['name'];
             }
           });
         }
       }
     } catch (e) {
       _logger.e("Error loading user custom data: $e");
-      if(mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to load user details.")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Failed to load user details.")));
       }
     }
   }
-
   @override
   void dispose() {
     _emailController.dispose();
@@ -88,12 +90,9 @@ class EditUserState extends State<EditUser> {
     _probationOfficerController.dispose();
     super.dispose();
   }
-
-  /// Updates all user information, including the list of vehicles, in Firestore.
   void _updateUserInfo() async {
     if (_formKey.currentState!.validate()) {
       try {
-        // Update standard Firebase Auth fields
         if (_emailController.text != _user.email) {
           await _user.verifyBeforeUpdateEmail(_emailController.text);
         }
@@ -103,15 +102,12 @@ class EditUserState extends State<EditUser> {
         if (_passwordController.text.isNotEmpty) {
           await _user.updatePassword(_passwordController.text);
         }
-
-        // Update custom fields in Firestore, now including the vehicles list
-        await _firestore
-            .collection('users')
-            .doc(_user.uid)
-            .set({
+        await _firestore.collection('users').doc(_user.uid).set({
           'dcNumber': _dcNumberController.text,
           'probationOfficer': _probationOfficerController.text,
-          'vehicles': _vehicles, // Save the entire list of vehicles
+          'vehicles': _vehicles,
+          // --- (3) ADDED: Save the passengers list ---
+          'passengers': _passengers,
         }, SetOptions(merge: true));
 
         await _user.reload();
@@ -134,8 +130,6 @@ class EditUserState extends State<EditUser> {
       }
     }
   }
-
-  /// Shows a dialog to add a new vehicle or edit an existing one.
   void _showVehicleDialog({Map<String, dynamic>? vehicleToEdit}) {
     final vehicleController = TextEditingController(text: vehicleToEdit?['vehicle'] ?? '');
     final tagController = TextEditingController(text: vehicleToEdit?['tag'] ?? '');
@@ -151,7 +145,8 @@ class EditUserState extends State<EditUser> {
             children: [
               TextField(
                 controller: vehicleController,
-                decoration: const InputDecoration(labelText: 'Vehicle (e.g., Toyota Camry)'),
+                decoration:
+                const InputDecoration(labelText: 'Vehicle (e.g., Toyota Camry)'),
                 autofocus: true,
               ),
               TextField(
@@ -172,19 +167,15 @@ class EditUserState extends State<EditUser> {
                 if (vehicle.isNotEmpty && tag.isNotEmpty) {
                   setState(() {
                     if (isEditing) {
-                      // Find and update the vehicle in the list
                       final index = _vehicles.indexWhere((v) => v['tag'] == vehicleToEdit['tag']);
                       if (index != -1) {
                         _vehicles[index] = {'vehicle': vehicle, 'tag': tag};
-                        // If the tag of the currently selected vehicle was changed, update the selection
                         if (_selectedVehicleTag == vehicleToEdit['tag']) {
                           _selectedVehicleTag = tag;
                         }
                       }
                     } else {
-                      // Add a new vehicle to the list
                       _vehicles.add({'vehicle': vehicle, 'tag': tag});
-                      // If it's the first vehicle being added, select it by default
                       if (_vehicles.length == 1) {
                         _selectedVehicleTag = tag;
                       }
@@ -200,30 +191,79 @@ class EditUserState extends State<EditUser> {
       },
     );
   }
+  void _showPassengerDialog({Map<String, dynamic>? passengerToEdit}) {
+    final nameController = TextEditingController(text: passengerToEdit?['name'] ?? '');
+    final isEditing = passengerToEdit != null;
 
-  /// A dedicated widget to build the entire vehicle management section.
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(isEditing ? 'Edit Passenger' : 'Add Passenger'),
+          content: TextField(
+            controller: nameController,
+            decoration: const InputDecoration(labelText: 'Passenger Name'),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final name = nameController.text;
+                if (name.isNotEmpty) {
+                  setState(() {
+                    if (isEditing) {
+                      final index = _passengers.indexWhere((p) => p['name'] == passengerToEdit['name']);
+                      if (index != -1) {
+                        _passengers[index] = {'name': name};
+                        if (_selectedPassengerName == passengerToEdit['name']) {
+                          _selectedPassengerName = name;
+                        }
+                      }
+                    } else {
+                      _passengers.add({'name': name});
+                      if (_passengers.length == 1) {
+                        _selectedPassengerName = name;
+                      }
+                    }
+                  });
+                  Navigator.of(context).pop();
+                }
+              },
+              child: Text(isEditing ? 'Save' : 'Add'),
+            ),
+          ],
+        );
+      },
+    );
+  }
   Widget _buildVehiclesSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 20),
-        // Header for the vehicles section
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Vehicles', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+            const Text('Vehicles',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white)),
             ElevatedButton.icon(
               icon: const Icon(Icons.add),
               label: const Text('Add'),
               onPressed: () => _showVehicleDialog(),
               style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueAccent, foregroundColor: Colors.white),
+                  backgroundColor: Colors.blueAccent,
+                  foregroundColor: Colors.white),
             ),
           ],
         ),
         const SizedBox(height: 10),
-
-        // Dropdown menu to select from the list of added vehicles
         if (_vehicles.isNotEmpty)
           DropdownButtonFormField<String>(
             value: _selectedVehicleTag,
@@ -247,7 +287,6 @@ class EditUserState extends State<EditUser> {
             },
           )
         else
-        // Placeholder message when no vehicles have been added
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -259,10 +298,8 @@ class EditUserState extends State<EditUser> {
             ),
           ),
         const SizedBox(height: 10),
-
-        // A scrollable list of vehicles with edit and delete buttons
         ListView.builder(
-          shrinkWrap: true, // Important inside a parent ListView
+          shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: _vehicles.length,
           itemBuilder: (context, index) {
@@ -275,22 +312,18 @@ class EditUserState extends State<EditUser> {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Edit button
                     IconButton(
                       icon: const Icon(Icons.edit, color: Colors.blue),
                       onPressed: () => _showVehicleDialog(vehicleToEdit: vehicle),
                     ),
-                    // Delete button
                     IconButton(
                       icon: const Icon(Icons.delete, color: Colors.red),
                       onPressed: () {
                         setState(() {
-                          // If the deleted vehicle was the one selected in the dropdown, reset the selection
                           if (_selectedVehicleTag == _vehicles[index]['tag']) {
                             _selectedVehicleTag = null;
                           }
                           _vehicles.removeAt(index);
-                          // If other vehicles still exist, select the first one by default
                           if (_vehicles.isNotEmpty) {
                             _selectedVehicleTag = _vehicles.first['tag'];
                           }
@@ -306,11 +339,103 @@ class EditUserState extends State<EditUser> {
       ],
     );
   }
-
+  Widget _buildPassengersSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Passengers', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.add),
+              label: const Text('Add'),
+              onPressed: () => _showPassengerDialog(),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal, foregroundColor: Colors.white),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (_passengers.isNotEmpty)
+          DropdownButtonFormField<String>(
+            value: _selectedPassengerName,
+            hint: const Text('Select a passenger'),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.grey[200],
+              border: const OutlineInputBorder(),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
+            ),
+            items: _passengers.map((passenger) {
+              return DropdownMenuItem<String>(
+                value: passenger['name'],
+                child: Text(passenger['name']),
+              );
+            }).toList(),
+            onChanged: (value) {
+              setState(() {
+                _selectedPassengerName = value;
+              });
+            },
+          )
+        else
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey[200]?.withAlpha(204),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(
+              child: Text('No passengers added yet. Click "Add" to start.'),
+            ),
+          ),
+        const SizedBox(height: 10),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _passengers.length,
+          itemBuilder: (context, index) {
+            final passenger = _passengers[index];
+            return Card(
+              color: Colors.white.withAlpha(204),
+              child: ListTile(
+                title: Text(passenger['name']),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit, color: Colors.blue),
+                      onPressed: () => _showPassengerDialog(passengerToEdit: passenger),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () {
+                        setState(() {
+                          if (_selectedPassengerName == _passengers[index]['name']) {
+                            _selectedPassengerName = null;
+                          }
+                          _passengers.removeAt(index);
+                          if (_passengers.isNotEmpty) {
+                            _selectedPassengerName = _passengers.first['name'];
+                          }
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit User')),
+      appBar: AppBar(title: const Text('Edit User Profile')),
       body: Container(
         decoration: const BoxDecoration(
           image: DecorationImage(
@@ -324,26 +449,32 @@ class EditUserState extends State<EditUser> {
             key: _formKey,
             child: ListView(
               children: [
-                // Re-using a helper for cleaner code
-                _buildTextFormField(_emailController, 'Email', validator: (val) => val != null && val.contains('@') ? null : 'Enter valid email'),
-                const SizedBox(height: 16),
+                _buildTextFormField(_emailController, 'Email',
+                    validator: (val) =>
+                    val != null && val.contains('@') ? null : 'Enter valid email'),
+                const SizedBox(height: 10),
                 _buildTextFormField(_nameController, 'Display Name'),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 _buildTextFormField(_dcNumberController, 'DCNumber'),
-                const SizedBox(height: 16),
-                _buildTextFormField(_probationOfficerController, 'Probation Officer'),
-                const SizedBox(height: 16),
-                _buildTextFormField(_passwordController, 'New Password (optional)', obscureText: true),
+                const SizedBox(height: 10),
+                _buildTextFormField(
+                    _probationOfficerController, 'Probation Officer'),
+                const SizedBox(height: 10),
+                _buildTextFormField(_passwordController, 'New Password (optional)',
+                    obscureText: true),
 
-                // Renders the entire vehicle management UI
+                const Divider(height: 15, color: Colors.white, thickness: 1),
                 _buildVehiclesSection(),
 
-                const SizedBox(height: 20),
+                // --- (6) ADDED: The passengers section UI ---
+                const Divider(height: 15, color: Colors.white, thickness: 1),
+                _buildPassengersSection(),
+
+                const SizedBox(height: 10),
                 ElevatedButton(
                   onPressed: _updateUserInfo,
                   style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16)
-                  ),
+                      padding: const EdgeInsets.symmetric(vertical: 16)),
                   child: const Text('Update User Info'),
                 ),
               ],
@@ -353,9 +484,8 @@ class EditUserState extends State<EditUser> {
       ),
     );
   }
-
-  /// A helper method to reduce repetition in TextFormField decoration.
-  Widget _buildTextFormField(TextEditingController controller, String label, {String? Function(String?)? validator, bool obscureText = false}) {
+  Widget _buildTextFormField(TextEditingController controller, String label,
+      {String? Function(String?)? validator, bool obscureText = false}) {
     return TextFormField(
       controller: controller,
       obscureText: obscureText,

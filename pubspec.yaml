@@ -54,4 +54,4 @@ flutter:
     - assets/animated/
     - assets/splash/
     - assets/fonts/
-    - assets/fonts/Times New Roman Regular.ttf
+#    - assets/fonts/Times New Roman Regular.ttf

@@ -309,25 +309,52 @@ class _ReportMonthlyState extends State<ReportMonthly> {
             pageFormat: PdfPageFormat.letter.landscape,
             margin: const pw.EdgeInsets.all(20),
             header: (pw.Context context) {
-              return pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Center(child: pw.Text('STATE OF FLORIDA', style: pw.TextStyle(font: ttf, fontSize: 12, fontWeight: pw.FontWeight.bold))),
-                  pw.Center(child: pw.Text('SEX OFFENDER PROBATION DRIVING LOG', style: pw.TextStyle(font: ttf, fontSize: 12, fontWeight: pw.FontWeight.bold))),
-                  pw.SizedBox(height: 10),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text('Name: $driversName', style: pw.TextStyle(font: ttf, fontSize: 12, decoration: pw.TextDecoration.underline)),
-                      pw.Text('DC#: ${_dcNumber ?? 'N/A'}', style: pw.TextStyle(font: ttf, fontSize: 12, decoration: pw.TextDecoration.underline)),
-                      pw.Text('Probation Officer: ${_probationOfficer ?? 'N/A'}', style: pw.TextStyle(font: ttf, fontSize: 12, decoration: pw.TextDecoration.underline)),
-                    ],
-                  ),
-                  pw.SizedBox(height: 5),
-                  pw.Text('Vehicle: $_selectedVehicleInfo', style: pw.TextStyle(font: ttf, fontSize: 12)),
+              // MODIFICATION: Only show the header on odd-numbered pages.
+              // The pageNumber from the context is 1-based (starts at 1).
+              if (context.pageNumber.isOdd) {
+                return pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Center(child: pw.Text('STATE OF FLORIDA', style: pw.TextStyle(font: ttf, fontSize: 12, fontWeight: pw.FontWeight.bold))),
+                    pw.Center(child: pw.Text('SEX OFFENDER PROBATION DRIVING LOG', style: pw.TextStyle(font: ttf, fontSize: 12, fontWeight: pw.FontWeight.bold))),
+                    pw.SizedBox(height: 10),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Container(
+                          width: 300,
+                          child: pw.Text(
+                              'Name: $driversName',
+                              style: pw.TextStyle(font: ttf, fontSize: 12,
+                                  decoration: pw.TextDecoration.underline)),
+                        ),
 
-                ],
-              );
+                        pw.SizedBox(width:20),
+
+                        pw.Container(
+                          width: 100,
+                          child: pw.Text('DC#: ${_dcNumber ?? 'N/A'}',
+                              style: pw.TextStyle(font: ttf, fontSize: 12,
+                                  decoration: pw.TextDecoration.underline)),
+                        ),
+
+                        pw.SizedBox(width:20),
+
+                        pw.Container(
+                          width: 300,
+                          child: pw.Text('Probation Officer: ${_probationOfficer ?? 'N/A'}',
+                              style: pw.TextStyle(font: ttf, fontSize: 12,
+                                  decoration: pw.TextDecoration.underline)),
+                        )
+                      ],
+                    ),
+                    pw.SizedBox(height: 5),
+                    pw.Text('Vehicle: $_selectedVehicleInfo', style: pw.TextStyle(font: ttf, fontSize: 12)),
+                  ],
+                );
+              }
+              // For even-numbered pages, return an empty container so no header is shown.
+              return pw.Container();
             },
             footer: (pw.Context context) {
               return pw.Container(
