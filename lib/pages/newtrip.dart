@@ -26,21 +26,15 @@ class _NewTripScreenState extends State<NewTripScreen> {
   final _firestore = FirebaseFirestore.instance;
   late TextEditingController _driverNameController;
   final TextEditingController _departedFromController = TextEditingController();
-
-  // --- (1) MODIFIED: Controller for our new manual text field ---
-  final TextEditingController _manualPassengerController = TextEditingController();
-
+  final TextEditingController _manualPassengerController =
+  TextEditingController();
   String? _fileName;
   File? _file;
   final List<Map<String, dynamic>> _vehicles = [];
   String? _selectedVehicle;
   bool _isLoadingVehicles = true;
-
-  // Pre-defined passenger list from Firestore
   final List<Map<String, dynamic>> _passengers = [];
   bool _isLoadingPassengers = true;
-
-  // --- (2) ADDED: State list for the passengers selected for THIS trip ---
   final List<String> _selectedPassengers = [];
 
   @override
@@ -68,8 +62,6 @@ class _NewTripScreenState extends State<NewTripScreen> {
       await _firestore.collection('users').doc(user.uid).get();
       if (docSnapshot.exists && docSnapshot.data() != null) {
         final data = docSnapshot.data() as Map<String, dynamic>;
-
-        print('--- Firestore Data Received ---'); print(data);
 
         final List<dynamic> vehicleData = data['vehicles'] ?? [];
         _vehicles.clear();
@@ -111,17 +103,17 @@ class _NewTripScreenState extends State<NewTripScreen> {
   void dispose() {
     _driverNameController.dispose();
     _departedFromController.dispose();
-    _manualPassengerController.dispose(); // Dispose the new controller
+    _manualPassengerController.dispose();
     super.dispose();
   }
 
-  // --- (3) ADDED: Dialog to select from the predefined passenger list ---
   void _showPassengerSelectionDialog() {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Select a Passenger'),
+          title:
+          const Text('Select a Passenger', style: TextStyle(fontSize: 50)),
           content: SizedBox(
             width: double.maxFinite,
             child: ListView.builder(
@@ -130,7 +122,8 @@ class _NewTripScreenState extends State<NewTripScreen> {
               itemBuilder: (context, index) {
                 final passengerName = _passengers[index]['name'] as String;
                 return ListTile(
-                  title: Text(passengerName),
+                  title:
+                  Text(passengerName, style: const TextStyle(fontSize: 50)),
                   onTap: () {
                     setState(() {
                       if (!_selectedPassengers.contains(passengerName)) {
@@ -146,7 +139,7 @@ class _NewTripScreenState extends State<NewTripScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
+              child: const Text('Close', style: TextStyle(fontSize: 25)),
             ),
           ],
         );
@@ -154,14 +147,14 @@ class _NewTripScreenState extends State<NewTripScreen> {
     );
   }
 
-  // --- (4) ADDED: The new custom widget builder ---
   Widget _buildPassengerInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'Passenger(s)',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+          style: TextStyle(
+              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 25),
         ),
         const SizedBox(height: 8),
         Container(
@@ -173,13 +166,12 @@ class _NewTripScreenState extends State<NewTripScreen> {
           ),
           child: Column(
             children: [
-              // This Wrap widget displays the selected passenger chips
               Wrap(
                 spacing: 8.0,
                 runSpacing: 4.0,
                 children: _selectedPassengers.map((passenger) {
                   return Chip(
-                    label: Text(passenger),
+                    label: Text(passenger, style: const TextStyle(fontSize: 25)),
                     onDeleted: () {
                       setState(() {
                         _selectedPassengers.remove(passenger);
@@ -189,14 +181,15 @@ class _NewTripScreenState extends State<NewTripScreen> {
                 }).toList(),
               ),
               if (_selectedPassengers.isNotEmpty) const Divider(),
-              // This Row contains the input field and buttons
               Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _manualPassengerController,
+                      style: const TextStyle(fontSize: 25),
                       decoration: const InputDecoration(
                         hintText: 'Type a new name...',
+                        hintStyle: TextStyle(fontSize: 25),
                         border: InputBorder.none,
                       ),
                     ),
@@ -206,7 +199,8 @@ class _NewTripScreenState extends State<NewTripScreen> {
                     tooltip: 'Add typed name',
                     onPressed: () {
                       final name = _manualPassengerController.text;
-                      if (name.isNotEmpty && !_selectedPassengers.contains(name)) {
+                      if (name.isNotEmpty &&
+                          !_selectedPassengers.contains(name)) {
                         setState(() {
                           _selectedPassengers.add(name);
                           _manualPassengerController.clear();
@@ -228,8 +222,6 @@ class _NewTripScreenState extends State<NewTripScreen> {
     );
   }
 
-  // Omitted other methods like _pickFile, _uploadFile, _getCurrentLocationAndGeocode for brevity as they are unchanged.
-  // Make sure to keep them in your actual file.
   Future<void> _pickFile() async {
     final result = await FilePicker.platform.pickFiles();
     if (result != null) {
@@ -239,6 +231,7 @@ class _NewTripScreenState extends State<NewTripScreen> {
       });
     }
   }
+
   Future<String?> _uploadFile(String tripId) async {
     if (_file == null) return null;
     try {
@@ -253,6 +246,7 @@ class _NewTripScreenState extends State<NewTripScreen> {
       return null;
     }
   }
+
   Future<void> _getCurrentLocationAndGeocode(String fieldName) async {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -266,7 +260,8 @@ class _NewTripScreenState extends State<NewTripScreen> {
       if (!serviceEnabled) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Location services are disabled. Please enable them.')),
+              content: Text(
+                  'Location services are disabled. Please enable them.')),
         );
         return;
       }
@@ -302,7 +297,8 @@ class _NewTripScreenState extends State<NewTripScreen> {
           pauseLocationUpdatesAutomatically: true,
         );
       } else {
-        locationSettings = const LocationSettings(accuracy: LocationAccuracy.high);
+        locationSettings =
+        const LocationSettings(accuracy: LocationAccuracy.high);
       }
       Position position = await Geolocator.getCurrentPosition(
           locationSettings: locationSettings);
@@ -321,7 +317,8 @@ class _NewTripScreenState extends State<NewTripScreen> {
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not determine address from location.')),
+          const SnackBar(
+              content: Text('Could not determine address from location.')),
         );
       }
     } catch (e) {
@@ -335,222 +332,250 @@ class _NewTripScreenState extends State<NewTripScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: const Text('Log New Trip'),
-        backgroundColor: const Color.fromARGB(255, 123, 194, 252),
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(
+        textScaler: const TextScaler.linear(1.0),
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/images/road_lines.png'),
-                  fit: BoxFit.cover,
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: FormBuilder(
-                  key: _formKey,
-                  autovalidateMode: AutovalidateMode.disabled,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      // All other form fields...
-                      FormBuilderTextField(
-                        name: 'driverName',
-                        controller: _driverNameController,
-                        decoration: const InputDecoration(
-                            labelText: 'Driver Name',
-                            border: OutlineInputBorder(),
-                            fillColor: Colors.white,
-                            filled: true),
-                        validator: FormBuilderValidators.compose(
-                            [FormBuilderValidators.maxLength(100)]),
-                      ),
-                      const SizedBox(height: 16),
-                      if (_isLoadingVehicles)
-                        const Center(child: CircularProgressIndicator())
-                      else if (_vehicles.isEmpty)
-                        Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                                color: Colors.white.withAlpha(204),
-                                borderRadius: BorderRadius.circular(4)),
-                            child: const Text(
-                                'No vehicles found. Please add a vehicle in your profile.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.black)))
-                      else
-                        FormBuilderDropdown<String>(
-                          name: 'vehicle',
-                          decoration: const InputDecoration(
-                              labelText: 'Vehicle',
-                              border: OutlineInputBorder(),
+      child: DefaultTextStyle(
+        style: const TextStyle(fontSize: 25),
+        child: Scaffold(
+          appBar: AppBar(
+            centerTitle: true,
+            title: const Text('Log New Trip', style: TextStyle(fontSize: 25, color: Colors.white)),
+            backgroundColor: const Color.fromARGB(255, 123, 194, 252),
+          ),
+          body: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage('assets/images/road_lines.png'),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: FormBuilder(
+                      key: _formKey,
+                      autovalidateMode: AutovalidateMode.disabled,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          FormBuilderTextField(
+                            name: 'driverName',
+                            controller: _driverNameController,
+                            style: const TextStyle(fontSize: 25),
+                            decoration: const InputDecoration(
+                                labelText: 'Driver Name',
+                                labelStyle: TextStyle(fontSize: 25),
+                                border: OutlineInputBorder(),
+                                fillColor: Colors.white,
+                                filled: true),
+                            validator: FormBuilderValidators.compose(
+                                [FormBuilderValidators.maxLength(100)]),
+                          ),
+                          const SizedBox(height: 16),
+                          if (_isLoadingVehicles)
+                            const Center(child: CircularProgressIndicator())
+                          else if (_vehicles.isEmpty)
+                            Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                    color: Colors.white.withAlpha(204),
+                                    borderRadius: BorderRadius.circular(4)),
+                                child: const Text(
+                                    'No vehicles found. Please add a vehicle in your profile.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        color: Colors.black, fontSize: 25)))
+                          else
+                            FormBuilderDropdown<String>(
+                              name: 'vehicle',
+                              style: const TextStyle(fontSize: 25),
+                              decoration: const InputDecoration(
+                                  labelText: 'Vehicle',
+                                  labelStyle: TextStyle(fontSize: 25),
+                                  border: OutlineInputBorder(),
+                                  fillColor: Colors.white,
+                                  filled: true),
+                              initialValue: _selectedVehicle,
+                              items: _vehicles.map((vehicle) {
+                                final displayText =
+                                    '${vehicle['vehicle']} - Tag: ${vehicle['tag']}';
+                                return DropdownMenuItem(
+                                    value: displayText,
+                                    child: Text(displayText,
+                                        style: const TextStyle(fontSize: 25)));
+                              }).toList(),
+                              validator: FormBuilderValidators.compose(
+                                  [FormBuilderValidators.required()]),
+                            ),
+                          const SizedBox(height: 16),
+                          FormBuilderDateTimePicker(
+                            name: 'tripDate',
+                            style: const TextStyle(fontSize: 25),
+                            inputType: InputType.date,
+                            format: DateFormat('yyyy-MM-dd'),
+                            decoration: const InputDecoration(
+                                labelText: 'Trip Date',
+                                labelStyle: TextStyle(fontSize: 25),
+                                border: OutlineInputBorder(),
+                                suffixIcon: Icon(Icons.calendar_today),
+                                fillColor: Colors.white,
+                                filled: true),
+                            initialValue: DateTime.now(),
+                            validator: FormBuilderValidators.compose(
+                                [FormBuilderValidators.required()]),
+                          ),
+                          const SizedBox(height: 16),
+                          FormBuilderDateTimePicker(
+                            name: 'tripStartTime',
+                            style: const TextStyle(fontSize: 25),
+                            inputType: InputType.time,
+                            format: DateFormat('h:mm a'),
+                            decoration: const InputDecoration(
+                                labelText: 'Trip Start Time',
+                                labelStyle: TextStyle(fontSize: 25),
+                                border: OutlineInputBorder(),
+                                suffixIcon: Icon(Icons.access_time),
+                                fillColor: Colors.white,
+                                filled: true),
+                            initialValue: DateTime.now(),
+                            validator: FormBuilderValidators.compose(
+                                [FormBuilderValidators.required()]),
+                          ),
+                          const SizedBox(height: 16),
+                          FormBuilderTextField(
+                            name: 'departedFrom',
+                            style: const TextStyle(fontSize: 25),
+                            controller: _departedFromController,
+                            decoration: InputDecoration(
+                              labelText: 'Departed From',
+                              labelStyle: const TextStyle(fontSize: 25),
+                              border: const OutlineInputBorder(),
+                              suffixIcon: IconButton(
+                                  icon: const Icon(Icons.gps_fixed),
+                                  tooltip: 'Get current address from GPS',
+                                  onPressed: () => _getCurrentLocationAndGeocode(
+                                      'departedFrom')),
                               fillColor: Colors.white,
-                              filled: true),
-                          initialValue: _selectedVehicle,
-                          items: _vehicles.map((vehicle) {
-                            final displayText =
-                                '${vehicle['vehicle']} - Tag: ${vehicle['tag']}';
-                            return DropdownMenuItem(
-                                value: displayText, child: Text(displayText));
-                          }).toList(),
-                          validator: FormBuilderValidators.compose(
-                              [FormBuilderValidators.required()]),
-                        ),
-                      const SizedBox(height: 16),
-                      FormBuilderDateTimePicker(
-                        name: 'tripDate',
-                        inputType: InputType.date,
-                        format: DateFormat('yyyy-MM-dd'),
-                        decoration: const InputDecoration(
-                            labelText: 'Trip Date',
-                            border: OutlineInputBorder(),
-                            suffixIcon: Icon(Icons.calendar_today),
-                            fillColor: Colors.white,
-                            filled: true),
-                        initialValue: DateTime.now(),
-                        validator: FormBuilderValidators.compose(
-                            [FormBuilderValidators.required()]),
-                      ),
-                      const SizedBox(height: 16),
-                      FormBuilderDateTimePicker(
-                        name: 'tripStartTime',
-                        inputType: InputType.time,
-                        format: DateFormat('h:mm a'),
-                        decoration: const InputDecoration(
-                            labelText: 'Trip Start Time',
-                            border: OutlineInputBorder(),
-                            suffixIcon: Icon(Icons.access_time),
-                            fillColor: Colors.white,
-                            filled: true),
-                        initialValue: DateTime.now(),
-                        validator: FormBuilderValidators.compose(
-                            [FormBuilderValidators.required()]),
-                      ),
-                      const SizedBox(height: 16),
-                      FormBuilderTextField(
-                        name: 'departedFrom',
-                        controller: _departedFromController,
-                        decoration: InputDecoration(
-                          labelText: 'Departed From',
-                          border: const OutlineInputBorder(),
-                          suffixIcon: IconButton(
-                              icon: const Icon(Icons.gps_fixed),
-                              tooltip: 'Get current address from GPS',
-                              onPressed: () =>
-                                  _getCurrentLocationAndGeocode('departedFrom')),
-                          fillColor: Colors.white,
-                          filled: true,
-                        ),
-                        validator: FormBuilderValidators.compose(
-                            [FormBuilderValidators.maxLength(150)]),
-                      ),
-                      const SizedBox(height: 16),
-                      FormBuilderTextField(
-                        name: 'startOdometer',
-                        decoration: const InputDecoration(
-                            labelText: 'Start Odometer',
-                            border: OutlineInputBorder(),
-                            fillColor: Colors.white,
-                            filled: true),
-                        keyboardType: TextInputType.number,
-                        validator: FormBuilderValidators.compose([
-                          FormBuilderValidators.required(),
-                          FormBuilderValidators.numeric(),
-                          FormBuilderValidators.min(0),
-                        ]),
-                      ),
-                      const SizedBox(height: 16),
-                      FormBuilderDateTimePicker(
-                        name: 'tripEndTime',
-                        inputType: InputType.time,
-                        format: DateFormat('h:mm a'),
-                        decoration: InputDecoration(
-                          labelText: 'Trip End Time',
-                          border: const OutlineInputBorder(),
-                          suffixIcon: IconButton(
-                              icon: const Icon(Icons.timer_outlined),
-                              tooltip: 'Set To Current Time',
-                              onPressed: () {
-                                _formKey.currentState?.fields['tripEndTime']
-                                    ?.didChange(DateTime.now());
-                              }),
-                          fillColor: Colors.white,
-                          filled: true,
-                        ),
-                        validator: FormBuilderValidators.compose(
-                            [FormBuilderValidators.required()]),
-                      ),
-                      const SizedBox(height: 16),
-                      FormBuilderTextField(
-                        name: 'destination',
-                        decoration: InputDecoration(
-                          labelText: 'Destination',
-                          border: const OutlineInputBorder(),
-                          suffixIcon: IconButton(
-                              icon: const Icon(Icons.location_searching),
-                              tooltip: 'Get Current Location',
-                              onPressed: () =>
-                                  _getCurrentLocationAndGeocode('destination')),
-                          fillColor: Colors.white,
-                          filled: true,
-                        ),
-                        validator: FormBuilderValidators.compose(
-                            [FormBuilderValidators.maxLength(150)]),
-                      ),
-                      const SizedBox(height: 16),
-                      FormBuilderTextField(
-                        name: 'endOdometer',
-                        decoration: const InputDecoration(
-                            labelText: 'End Odometer',
-                            border: OutlineInputBorder(),
-                            fillColor: Colors.white,
-                            filled: true),
-                        keyboardType: TextInputType.number,
-                        validator: FormBuilderValidators.compose([
-                          FormBuilderValidators.required(),
-                          FormBuilderValidators.numeric(),
-                          FormBuilderValidators.min(0),
-                        ]),
-                      ),
-                      const SizedBox(height: 16),
+                              filled: true,
+                            ),
+                            validator: FormBuilderValidators.compose(
+                                [FormBuilderValidators.maxLength(150)]),
+                          ),
+                          const SizedBox(height: 16),
+                          FormBuilderTextField(
+                            name: 'startOdometer',
+                            style: const TextStyle(fontSize: 25),
+                            decoration: const InputDecoration(
+                                labelText: 'Start Odometer',
+                                labelStyle: TextStyle(fontSize: 25),
+                                border: OutlineInputBorder(),
+                                fillColor: Colors.white,
+                                filled: true),
+                            keyboardType: TextInputType.number,
+                            validator: FormBuilderValidators.compose([
+                              FormBuilderValidators.required(),
+                              FormBuilderValidators.numeric(),
+                              FormBuilderValidators.min(0),
+                            ]),
+                          ),
+                          const SizedBox(height: 16),
+                          FormBuilderDateTimePicker(
+                            name: 'tripEndTime',
+                            style: const TextStyle(fontSize: 25),
+                            inputType: InputType.time,
+                            format: DateFormat('h:mm a'),
+                            decoration: InputDecoration(
+                              labelText: 'Trip End Time',
+                              labelStyle: const TextStyle(fontSize: 25),
+                              border: const OutlineInputBorder(),
+                              suffixIcon: IconButton(
+                                  icon: const Icon(Icons.timer_outlined),
+                                  tooltip: 'Set To Current Time',
+                                  onPressed: () {
+                                    _formKey.currentState?.fields['tripEndTime']
+                                        ?.didChange(DateTime.now());
+                                  }),
+                              fillColor: Colors.white,
+                              filled: true,
+                            ),
+                            validator: FormBuilderValidators.compose(
+                                [FormBuilderValidators.required()]),
+                          ),
+                          const SizedBox(height: 16),
+                          FormBuilderTextField(
+                            name: 'destination',
+                            style: const TextStyle(fontSize: 25),
+                            decoration: InputDecoration(
+                              labelText: 'Destination',
+                              labelStyle: const TextStyle(fontSize: 25),
+                              border: const OutlineInputBorder(),
+                              suffixIcon: IconButton(
+                                  icon: const Icon(Icons.location_searching),
+                                  tooltip: 'Get Current Location',
+                                  onPressed: () =>
+                                      _getCurrentLocationAndGeocode('destination')),
+                              fillColor: Colors.white,
+                              filled: true,
+                            ),
+                            validator: FormBuilderValidators.compose(
+                                [FormBuilderValidators.maxLength(150)]),
+                          ),
+                          const SizedBox(height: 16),
+                          FormBuilderTextField(
+                            name: 'endOdometer',
+                            style: const TextStyle(fontSize: 25),
+                            decoration: const InputDecoration(
+                                labelText: 'End Odometer',
+                                labelStyle: TextStyle(fontSize: 25),
+                                border: OutlineInputBorder(),
+                                fillColor: Colors.white,
+                                filled: true),
+                            keyboardType: TextInputType.number,
+                            validator: FormBuilderValidators.compose([
+                              FormBuilderValidators.required(),
+                              FormBuilderValidators.numeric(),
+                              FormBuilderValidators.min(0),
+                            ]),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildPassengerInput(),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: _pickFile,
+                            icon: const Icon(Icons.attach_file),
+                            label: Text(_fileName ?? 'Upload Trip Notes',
+                                style: const TextStyle(fontSize: 25)),
+                          ),
+                          const SizedBox(height: 50),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                const Color.fromARGB(255, 123, 194, 252),
+                                padding:
+                                const EdgeInsets.symmetric(vertical: 16.0)),
+                            onPressed: () {
+                              if (_formKey.currentState?.saveAndValidate() ??
+                                  false) {
+                                final formData = _formKey.currentState?.value;
+                                final User? currentUser = _auth.currentUser;
 
-                      // --- (5) REPLACED: Using our new custom widget ---
-                      _buildPassengerInput(),
-
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: _pickFile,
-                        icon: const Icon(Icons.attach_file),
-                        label: Text(_fileName ?? 'Upload Trip Notes'),
+                                if (formData != null && currentUser != null) {
+                                  _submitTripData(formData, currentUser);
+                                }
+                              }
+                            },
+                            child: const Text('Submit Trip',
+                                style:
+                                TextStyle(fontSize: 25, color: Colors.white)),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                            const Color.fromARGB(255, 123, 194, 252),
-                            padding: const EdgeInsets.symmetric(vertical: 16.0)),
-                        onPressed: () {
-                          if (_formKey.currentState?.saveAndValidate() ?? false) {
-                            final formData = _formKey.currentState?.value;
-                            final User? currentUser = _auth.currentUser;
-
-                            if (formData != null && currentUser != null) {
-                              _submitTripData(formData, currentUser);
-                            }
-                          }
-                        },
-                        child: const Text('Submit Trip',
-                            style:
-                            TextStyle(fontSize: 16, color: Colors.white)),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -572,8 +597,6 @@ class _NewTripScreenState extends State<NewTripScreen> {
       Map<String, dynamic> tripData = Map<String, dynamic>.from(formData);
       tripData['userId'] = currentUser.uid;
       tripData['userEmail'] = currentUser.email;
-
-      // --- (6) MODIFIED: Manually add the passenger list to the data ---
       tripData['passenger'] = _selectedPassengers.join(', ');
 
       if (tripData['startOdometer'] is String) {
@@ -598,7 +621,6 @@ class _NewTripScreenState extends State<NewTripScreen> {
       );
 
       Navigator.of(context).popUntil((route) => route.isFirst);
-
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

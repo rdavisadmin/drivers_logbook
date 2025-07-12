@@ -29,9 +29,26 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Drivers Logbook',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        textTheme: TextTheme(
+            bodyMedium: TextStyle(fontSize: 20),
+            bodyLarge: TextStyle(fontSize: 20),
+            bodySmall: TextStyle(fontSize: 20),
+            titleLarge: TextStyle(fontSize: 20),
+            titleMedium: TextStyle(fontSize: 20),
+            titleSmall: TextStyle(fontSize: 20),
+            headlineLarge: TextStyle(fontSize: 20),
+            headlineMedium: TextStyle(fontSize: 20),
+            headlineSmall: TextStyle(fontSize: 20),
+            displayLarge: TextStyle(fontSize: 20),
+            displayMedium: TextStyle(fontSize: 20),
+            displaySmall: TextStyle(fontSize: 20),
+            labelLarge: TextStyle(fontSize: 20),
+            labelMedium: TextStyle(fontSize: 20),
+            labelSmall: TextStyle(fontSize: 20),
+
+        ),
       ),
-      home: const AuthWrapper(),
+            home: const AuthWrapper(),
     );
   }
 }
